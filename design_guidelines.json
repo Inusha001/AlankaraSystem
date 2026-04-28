@@ -1,0 +1,98 @@
+{
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) with touches of Archetype 5 (Jewel & Luxury)",
+  "design_philosophy": "A highly functional yet premium internal tool for a jewelry shop. The design prioritizes data clarity and high contrast while maintaining an elegant, high-end feel suitable for a luxury business. The layout features a split-screen or dual-column approach: an efficient data entry form on one side, and a live, print-ready invoice preview on the other.",
+  "colors": {
+    "background": "#FDFCFB",
+    "foreground": "#111111",
+    "card": "#FFFFFF",
+    "card_foreground": "#111111",
+    "primary": "#111111",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#F3F2F0",
+    "secondary_foreground": "#333333",
+    "accent": "#C5A059",
+    "accent_foreground": "#FFFFFF",
+    "muted": "#EBEBEB",
+    "muted_foreground": "#666666",
+    "border": "#E5E5E5",
+    "input": "#E5E5E5",
+    "ring": "#111111",
+    "success": "#28A745",
+    "warning": "#FFC107",
+    "destructive": "#DC3545"
+  },
+  "typography": {
+    "heading_font": "Cormorant Garamond",
+    "body_font": "Outfit",
+    "font_weights": {
+      "light": "300",
+      "normal": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700"
+    },
+    "hierarchy": {
+      "h1": "text-4xl tracking-tight font-heading font-medium",
+      "h2": "text-2xl tracking-tight font-heading font-medium",
+      "h3": "text-xl font-heading font-medium",
+      "body": "text-base font-body text-foreground/80",
+      "small": "text-sm font-body text-muted-foreground",
+      "overline": "text-xs uppercase tracking-widest font-body font-semibold text-muted-foreground"
+    }
+  },
+  "layout_and_spacing": {
+    "philosophy": "Generous spacing. The application should feel breathable. The main interface should feature a sidebar/form column and a large live preview column.",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "bento_grid": "grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12",
+    "form_column": "col-span-1 lg:col-span-5 space-y-8",
+    "preview_column": "col-span-1 lg:col-span-7",
+    "card_padding": "p-6 sm:p-8"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 rounded-sm font-body px-6 py-2 h-auto shadow-sm",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all duration-200 rounded-sm font-body px-6 py-2 h-auto",
+      "accent": "bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 rounded-sm font-body px-6 py-2 h-auto shadow-sm"
+    },
+    "inputs": {
+      "default": "border-border bg-transparent focus:ring-1 focus:ring-ring focus:border-ring rounded-sm font-body h-10 px-3 transition-colors",
+      "label": "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block"
+    },
+    "cards": {
+      "default": "bg-card border border-border shadow-sm rounded-md overflow-hidden",
+      "invoice_paper": "bg-white border border-border shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-10 min-h-[842px] max-w-[595px] mx-auto aspect-[1/1.414]"
+    }
+  },
+  "motion_and_interactions": {
+    "hover_states": "Subtle opacity shifts and minimal scaling. Borders darken on hover for inputs.",
+    "transitions": "transition-all duration-200 ease-in-out",
+    "data_fetch": "Fade in fetched data fields with a slight upward translation (e.g., framer-motion initial opacity 0, y 10, animate opacity 1, y 0) to highlight the successful retrieval."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "clean, 1.5px stroke width"
+  },
+  "image_urls": [
+    {
+      "url": "https://images.pexels.com/photos/36772505/pexels-photo-36772505.jpeg",
+      "category": "background_or_empty_state",
+      "description": "Modern jewelry store interior, can be used lightly as a blurred background or in empty states/auth screens."
+    }
+  ],
+  "accessibility": {
+    "contrast": "Ensure all text meets APCA/WCAG AA standards. Input borders must have sufficient contrast.",
+    "focus": "All interactive elements must have a visible focus ring (`focus:ring-2 focus:ring-ring focus:ring-offset-2`)."
+  },
+  "instructions_to_main_agent": [
+    "Build a dual-pane layout: Left pane for data entry (Form), Right pane for live Invoice Preview (styled like A4 paper).",
+    "Integrate Google Fonts: Cormorant Garamond (Heading) and Outfit (Body). Add to Tailwind config.",
+    "The Form should have fields: Stock Card Number (with a 'Fetch' button next to it), Customer Name, Sales Person Name, Description, Discount (amount/percent), VAT toggle.",
+    "Auto-calculate the Discount Percentage if amount is entered, or vice versa.",
+    "VAT toggle must automatically add 18% to the final total.",
+    "The Live Preview must instantly reflect the form's state and fetched data (Item, Metal, Metal Type, Diamond Type, Diamond Clarity, Diamond CTS, CS Type, CS CTS, Stock Price).",
+    "Format the Invoice Preview cleanly: Header with generic Jewelry Shop logo/name, Date/Time, Invoice Number. Body with customer info. A structured table for item details. Subtotal, Discount, VAT, and Total at the bottom. Signature line at the very end.",
+    "Use standard `window.print()` triggered by a 'Print Invoice' button. Use CSS `@media print` to hide the form and sidebar, expanding the invoice to full width/height.",
+    "Include a 'Save & Email Manager' button that handles Firebase submission (mocked or actual if setup) and simulates emailing."
+  ]
+}
