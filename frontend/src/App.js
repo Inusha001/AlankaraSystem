@@ -503,7 +503,6 @@ export default function App() {
             </div>
             <InvoicePreview
               invoice={previewInvoice}
-              shopName={SHOP_NAME}
               dateTime={dateTimeStr}
               totals={totals}
             />
