@@ -68,6 +68,22 @@ export default function App() {
   const now = useLiveDateTime();
   const dateTimeStr = formatDateTime(now);
 
+  // Fetch next invoice number on mount so the preview shows the real number live
+  useEffect(() => {
+    let mounted = true;
+    axios
+      .get(`${API}/invoices/next-number`)
+      .then(({ data }) => {
+        if (mounted && data?.invoice_number) {
+          setForm((f) => ({ ...f, invoiceNumber: data.invoice_number }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const totals = useMemo(() => {
     const price = Number(form.stockPrice) || 0;
     const disc = Number(form.discountAmount) || 0;
@@ -211,6 +227,15 @@ export default function App() {
   const newInvoice = () => {
     setForm(initialForm);
     setLastEdited("amount");
+    // Refresh next invoice number
+    axios
+      .get(`${API}/invoices/next-number`)
+      .then(({ data }) => {
+        if (data?.invoice_number) {
+          setForm((f) => ({ ...f, invoiceNumber: data.invoice_number }));
+        }
+      })
+      .catch(() => {});
   };
 
   const previewInvoice = {

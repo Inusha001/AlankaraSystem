@@ -115,6 +115,16 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
         </div>
       </div>
 
+      {/* Description (above item details) */}
+      {description && (
+        <div className="mt-6">
+          <div className="text-[9px] tracking-[0.25em] text-muted-foreground uppercase mb-1">
+            Description
+          </div>
+          <div className="text-[12px]">{description}</div>
+        </div>
+      )}
+
       {/* Item details */}
       <div className="mt-6">
         <div className="text-[9px] tracking-[0.25em] text-muted-foreground uppercase mb-2">
@@ -130,12 +140,6 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
             ))}
           </tbody>
         </table>
-        {description && (
-          <div className="mt-3 text-[12px]">
-            <span className="text-muted-foreground">Description: </span>
-            <span>{description}</span>
-          </div>
-        )}
       </div>
 
       {/* Totals */}

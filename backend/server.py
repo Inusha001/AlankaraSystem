@@ -305,6 +305,14 @@ def render_invoice_html(inv: Invoice) -> str:
     """
 
 
+@api_router.get("/invoices/next-number")
+async def next_invoice_number():
+    """Peek at the next invoice number without incrementing the counter."""
+    doc = await db.counters.find_one({"_id": "invoice"}, {"_id": 0})
+    current = (doc or {}).get("seq", 0)
+    return {"invoice_number": f"INV-{current + 1:05d}"}
+
+
 @api_router.post("/invoices", response_model=Invoice)
 async def create_invoice(payload: InvoiceCreate):
     # Compute totals server-side as canonical
