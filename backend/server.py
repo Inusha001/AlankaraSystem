@@ -92,28 +92,41 @@ def normalize(s: str) -> str:
 
 
 COLUMN_ALIASES = {
-    'stock_card': ['stockcard', 'stockcardnumber', 'stockno', 'stock', 'cardno', 'cardnumber'],
-    'item': ['item', 'itemname', 'product'],
-    'metal': ['metal'],
-    'metal_type': ['metaltype'],
-    'diamond_type': ['diamondtype'],
-    'diamond_clarity': ['diamondclarity', 'clarity'],
-    'diamond_cts': ['diamondcts', 'diamondcarat', 'diamondcarats'],
-    'cs_type': ['cstype', 'colourstonetype', 'colorstonetype'],
-    'cs_cts': ['cscts', 'cscarat', 'cscarats'],
-    'stock_price': ['stockprice', 'price'],
+    # field -> list of substrings (all lowercased & stripped of non-alnum) that the header should CONTAIN
+    'stock_card':      [['stock', 'card'], ['stockno'], ['cardno'], ['cardnumber'], ['stockcardnumer']],
+    'item':            [['item'], ['product']],
+    'metal_type':      [['metal', 'type']],
+    'metal':           [['metal']],
+    'diamond_type':    [['diamond', 'type']],
+    'diamond_clarity': [['diamond', 'clarity'], ['clarity']],
+    'diamond_cts':     [['diamond', 'cts'], ['diamond', 'carat']],
+    'cs_type':         [['cs', 'type'], ['colourstonetype'], ['colorstonetype']],
+    'cs_cts':          [['cs', 'cts'], ['cs', 'carat']],
+    'stock_price':     [['stock', 'price'], ['price']],
 }
+
+# Ordered so that multi-token fields (metal_type, diamond_type) get matched BEFORE the
+# shorter variants (metal, diamond) that would otherwise swallow them.
+_FIELD_ORDER = [
+    'stock_card', 'metal_type', 'diamond_type', 'diamond_clarity', 'diamond_cts',
+    'cs_type', 'cs_cts', 'stock_price', 'item', 'metal',
+]
 
 
 def map_columns(headers: List[str]) -> dict:
-    """Map normalized header names -> field name"""
+    """Match each field to the first header whose normalized form CONTAINS
+    all the required substrings for one of the alias patterns."""
     norm_headers = [normalize(h) for h in headers]
-    mapping = {}
-    for field, aliases in COLUMN_ALIASES.items():
-        for alias in aliases:
+    used_indices: set = set()
+    mapping: dict = {}
+    for field in _FIELD_ORDER:
+        for alias_pattern in COLUMN_ALIASES[field]:
             for i, nh in enumerate(norm_headers):
-                if nh == alias:
+                if i in used_indices:
+                    continue
+                if all(tok in nh for tok in alias_pattern):
                     mapping[field] = i
+                    used_indices.add(i)
                     break
             if field in mapping:
                 break
