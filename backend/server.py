@@ -1,13 +1,17 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import io
+import csv
+import asyncio
 import logging
+import requests
+import resend
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
+from typing import List, Optional
 from datetime import datetime, timezone
 
 
@@ -19,52 +23,324 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# Resend
+resend.api_key = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+MANAGER_EMAIL = os.environ.get('MANAGER_EMAIL', '')
+SHOP_NAME = os.environ.get('SHOP_NAME', 'Jewelry Shop')
+GOOGLE_SHEET_CSV_URL = os.environ.get('GOOGLE_SHEET_CSV_URL', '')
 
-# Create a router with the /api prefix
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+# ---------- Models ----------
+class StockItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    stock_card: str
+    item: str = ""
+    metal: str = ""
+    metal_type: str = ""
+    diamond_type: str = ""
+    diamond_clarity: str = ""
+    diamond_cts: str = ""
+    cs_type: str = ""
+    cs_cts: str = ""
+    stock_price: float = 0.0
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
 
-# Add your routes to the router instead of directly to app
+class InvoiceCreate(BaseModel):
+    customer_name: str
+    customer_email: Optional[str] = ""
+    customer_phone: Optional[str] = ""
+    sales_person: str
+    stock_card: str
+    description: str = ""
+    item: str = ""
+    metal: str = ""
+    metal_type: str = ""
+    diamond_type: str = ""
+    diamond_clarity: str = ""
+    diamond_cts: str = ""
+    cs_type: str = ""
+    cs_cts: str = ""
+    stock_price: float = 0.0
+    discount_amount: float = 0.0
+    discount_percent: float = 0.0
+    vat_invoice: bool = False
+    vat_amount: float = 0.0
+    subtotal: float = 0.0
+    total: float = 0.0
+
+
+class Invoice(InvoiceCreate):
+    invoice_number: str
+    created_at: str
+    email_sent: bool = False
+
+
+# ---------- Helpers ----------
+def normalize(s: str) -> str:
+    return ''.join(c.lower() for c in (s or '') if c.isalnum())
+
+
+COLUMN_ALIASES = {
+    'stock_card': ['stockcard', 'stockcardnumber', 'stockno', 'stock', 'cardno', 'cardnumber'],
+    'item': ['item', 'itemname', 'product'],
+    'metal': ['metal'],
+    'metal_type': ['metaltype'],
+    'diamond_type': ['diamondtype'],
+    'diamond_clarity': ['diamondclarity', 'clarity'],
+    'diamond_cts': ['diamondcts', 'diamondcarat', 'diamondcarats'],
+    'cs_type': ['cstype', 'colourstonetype', 'colorstonetype'],
+    'cs_cts': ['cscts', 'cscarat', 'cscarats'],
+    'stock_price': ['stockprice', 'price'],
+}
+
+
+def map_columns(headers: List[str]) -> dict:
+    """Map normalized header names -> field name"""
+    norm_headers = [normalize(h) for h in headers]
+    mapping = {}
+    for field, aliases in COLUMN_ALIASES.items():
+        for alias in aliases:
+            for i, nh in enumerate(norm_headers):
+                if nh == alias:
+                    mapping[field] = i
+                    break
+            if field in mapping:
+                break
+    return mapping
+
+
+def fetch_sheet_rows() -> List[dict]:
+    """Fetch CSV from Google Sheet and return list of normalized dict rows."""
+    if not GOOGLE_SHEET_CSV_URL:
+        return []
+    try:
+        r = requests.get(GOOGLE_SHEET_CSV_URL, timeout=15, allow_redirects=True,
+                         headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code != 200 or not r.text.strip():
+            logger.warning(f"Sheet fetch returned status={r.status_code} len={len(r.text)}")
+            return []
+        reader = csv.reader(io.StringIO(r.text))
+        rows = list(reader)
+        if len(rows) < 2:
+            return []
+        headers = rows[0]
+        col_map = map_columns(headers)
+        if 'stock_card' not in col_map:
+            logger.warning(f"Could not find stock_card column. Headers: {headers}")
+            return []
+        result = []
+        for row in rows[1:]:
+            if not any(c.strip() for c in row):
+                continue
+            obj = {}
+            for field, idx in col_map.items():
+                val = row[idx] if idx < len(row) else ''
+                obj[field] = val.strip()
+            result.append(obj)
+        return result
+    except Exception as e:
+        logger.exception(f"Failed to fetch sheet: {e}")
+        return []
+
+
+def parse_price(val: str) -> float:
+    if not val:
+        return 0.0
+    try:
+        cleaned = ''.join(c for c in val if c.isdigit() or c in '.-')
+        return float(cleaned) if cleaned else 0.0
+    except Exception:
+        return 0.0
+
+
+# ---------- Routes ----------
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Jewelry Invoice API", "shop": SHOP_NAME}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+@api_router.get("/stock/{stock_card}", response_model=StockItem)
+async def get_stock(stock_card: str):
+    rows = fetch_sheet_rows()
+    if not rows:
+        raise HTTPException(status_code=503, detail="Stock data unavailable. Check the Google Sheet has data and is published.")
+    target = normalize(stock_card)
+    for row in rows:
+        if normalize(row.get('stock_card', '')) == target:
+            return StockItem(
+                stock_card=row.get('stock_card', stock_card),
+                item=row.get('item', ''),
+                metal=row.get('metal', ''),
+                metal_type=row.get('metal_type', ''),
+                diamond_type=row.get('diamond_type', ''),
+                diamond_clarity=row.get('diamond_clarity', ''),
+                diamond_cts=row.get('diamond_cts', ''),
+                cs_type=row.get('cs_type', ''),
+                cs_cts=row.get('cs_cts', ''),
+                stock_price=parse_price(row.get('stock_price', '0')),
+            )
+    raise HTTPException(status_code=404, detail=f"Stock card '{stock_card}' not found")
+
+
+@api_router.get("/stock")
+async def list_stock():
+    """Debug helper: list all stock card numbers found in the sheet."""
+    rows = fetch_sheet_rows()
+    return {"count": len(rows), "items": [r.get('stock_card', '') for r in rows]}
+
+
+async def _send_invoice_email(invoice: Invoice) -> bool:
+    if not MANAGER_EMAIL or not resend.api_key:
+        return False
+    html = render_invoice_html(invoice)
+    params = {
+        "from": SENDER_EMAIL,
+        "to": [MANAGER_EMAIL],
+        "subject": f"New Invoice {invoice.invoice_number} - {invoice.customer_name}",
+        "html": html,
+    }
+    try:
+        await asyncio.to_thread(resend.Emails.send, params)
+        return True
+    except Exception as e:
+        logger.error(f"Resend email failed: {e}")
+        return False
+
+
+def render_invoice_html(inv: Invoice) -> str:
+    rows_html = ""
+    fields = [
+        ("Item", inv.item),
+        ("Metal", inv.metal),
+        ("Metal Type", inv.metal_type),
+        ("Diamond Type", inv.diamond_type),
+        ("Diamond Clarity", inv.diamond_clarity),
+        ("Diamond CTS", inv.diamond_cts),
+        ("CS Type", inv.cs_type),
+        ("CS CTS", inv.cs_cts),
+    ]
+    for k, v in fields:
+        if v:
+            rows_html += f'<tr><td style="padding:6px 12px;border-bottom:1px solid #eee;color:#666;font-size:13px;">{k}</td><td style="padding:6px 12px;border-bottom:1px solid #eee;font-size:13px;">{v}</td></tr>'
+    return f"""
+    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#111;">
+      <table width="100%" style="border-collapse:collapse;">
+        <tr><td style="padding-bottom:16px;border-bottom:2px solid #111;">
+          <h1 style="margin:0;font-size:24px;letter-spacing:2px;">{SHOP_NAME}</h1>
+          <div style="color:#888;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-top:4px;">Tax Invoice</div>
+        </td></tr>
+        <tr><td style="padding-top:20px;">
+          <table width="100%" style="border-collapse:collapse;font-size:13px;">
+            <tr>
+              <td style="vertical-align:top;width:50%;">
+                <div style="color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Invoice No.</div>
+                <div style="font-size:16px;font-weight:600;">{inv.invoice_number}</div>
+              </td>
+              <td style="vertical-align:top;text-align:right;">
+                <div style="color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Date</div>
+                <div>{inv.created_at}</div>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding-top:20px;">
+          <table width="100%" style="border-collapse:collapse;font-size:13px;">
+            <tr>
+              <td style="vertical-align:top;width:50%;">
+                <div style="color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Bill To</div>
+                <div style="font-weight:600;">{inv.customer_name}</div>
+                {f'<div>{inv.customer_email}</div>' if inv.customer_email else ''}
+                {f'<div>{inv.customer_phone}</div>' if inv.customer_phone else ''}
+              </td>
+              <td style="vertical-align:top;text-align:right;">
+                <div style="color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Sales Person</div>
+                <div>{inv.sales_person}</div>
+                <div style="margin-top:8px;color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Stock Card</div>
+                <div>{inv.stock_card}</div>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding-top:20px;">
+          <div style="color:#888;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Item Details</div>
+          <table width="100%" style="border-collapse:collapse;border:1px solid #eee;">
+            {rows_html}
+          </table>
+          {f'<p style="margin-top:12px;font-size:13px;color:#444;"><b>Description:</b> {inv.description}</p>' if inv.description else ''}
+        </td></tr>
+        <tr><td style="padding-top:24px;">
+          <table width="100%" style="border-collapse:collapse;font-size:13px;">
+            <tr><td style="padding:6px 0;color:#666;">Subtotal</td><td style="padding:6px 0;text-align:right;">{inv.stock_price:,.2f}</td></tr>
+            <tr><td style="padding:6px 0;color:#666;">Discount ({inv.discount_percent:.2f}%)</td><td style="padding:6px 0;text-align:right;">- {inv.discount_amount:,.2f}</td></tr>
+            {f'<tr><td style="padding:6px 0;color:#666;">VAT (18%)</td><td style="padding:6px 0;text-align:right;">{inv.vat_amount:,.2f}</td></tr>' if inv.vat_invoice else ''}
+            <tr><td style="padding:10px 0;border-top:2px solid #111;font-weight:700;font-size:16px;">Total</td><td style="padding:10px 0;border-top:2px solid #111;text-align:right;font-weight:700;font-size:16px;">{inv.total:,.2f}</td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </div>
+    """
+
+
+@api_router.post("/invoices", response_model=Invoice)
+async def create_invoice(payload: InvoiceCreate):
+    # Compute totals server-side as canonical
+    subtotal = max(payload.stock_price - payload.discount_amount, 0.0)
+    vat_amount = round(subtotal * 0.18, 2) if payload.vat_invoice else 0.0
+    total = round(subtotal + vat_amount, 2)
+    discount_percent = (payload.discount_amount / payload.stock_price * 100.0) if payload.stock_price > 0 else 0.0
+
+    # Generate sequential invoice number
+    counter_doc = await db.counters.find_one_and_update(
+        {"_id": "invoice"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    seq = counter_doc.get("seq", 1) if counter_doc else 1
+    invoice_number = f"INV-{seq:05d}"
+
+    created_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    payload_dict = payload.model_dump()
+    payload_dict.update({
+        "subtotal": round(subtotal, 2),
+        "vat_amount": vat_amount,
+        "total": total,
+        "discount_percent": round(discount_percent, 2),
+    })
+    invoice = Invoice(
+        **payload_dict,
+        invoice_number=invoice_number,
+        created_at=created_at,
+        email_sent=False,
+    )
+
+    # Send email (non-blocking via thread)
+    email_sent = await _send_invoice_email(invoice)
+    invoice.email_sent = email_sent
+
+    # Save to MongoDB (exclude _id to avoid serialization issues)
+    doc = invoice.model_dump()
+    await db.invoices.insert_one(doc)
+    return invoice
+
+
+@api_router.get("/invoices", response_model=List[Invoice])
+async def list_invoices():
+    invoices = await db.invoices.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return invoices
+
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -77,12 +353,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
