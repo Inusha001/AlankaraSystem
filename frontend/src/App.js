@@ -210,6 +210,7 @@ export default function App() {
         diamond_cts: form.diamondCts,
         cs_type: form.csType,
         cs_cts: form.csCts,
+        metal_weight: form.metalWeight,
         stock_price: Number(form.stockPrice),
         discount_amount: Number(form.discountAmount),
         discount_percent: Number(form.discountPercent),
@@ -295,6 +296,7 @@ export default function App() {
       diamondCts: inv.diamond_cts || "",
       csType: inv.cs_type || "",
       csCts: inv.cs_cts || "",
+      metalWeight: inv.metal_weight || "",
       stockPrice: Number(inv.stock_price) || 0,
       discountAmount: Number(inv.discount_amount) || 0,
       discountPercent: Number(inv.discount_percent) || 0,
@@ -467,6 +469,17 @@ export default function App() {
                   value={form.salesPerson}
                   onChange={(e) => set({ salesPerson: e.target.value })}
                   className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="metalWeight">Metal Weight</Label>
+                <Input
+                  id="metalWeight"
+                  data-testid="input-metal-weight"
+                  value={form.metalWeight}
+                  onChange={(e) => set({ metalWeight: e.target.value })}
+                  className="mt-2"
+                  placeholder="e.g. 4.250 g (leave blank to hide on invoice)"
                 />
               </div>
               <div>

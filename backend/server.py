@@ -76,6 +76,7 @@ class InvoiceCreate(BaseModel):
     diamond_cts: str = ""
     cs_type: str = ""
     cs_cts: str = ""
+    metal_weight: str = ""
     stock_price: float = 0.0
     discount_amount: float = 0.0
     discount_percent: float = 0.0

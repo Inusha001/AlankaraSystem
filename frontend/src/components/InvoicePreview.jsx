@@ -36,13 +36,15 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
     ["Item", item],
     ["Metal", metal],
     ["Metal Type", metalType],
-    ["Diamond Type", diamondType],
   ];
+  if (invoice.metalWeight) {
+    detailColLeft.push(["Metal Weight", invoice.metalWeight]);
+  }
   const detailColRight = [
     ["Diamond Clarity", diamondClarity],
     ["Diamond CTS", diamondCts],
-    ["CS Type", csType],
-    ["CS CTS", csCts],
+    ["C/S Type", csType],
+    ["C/S CTS", csCts],
   ];
 
   const renderColumn = (rows) => (
@@ -161,7 +163,7 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
           Description
         </div>
         <div
-          className="border border-foreground/60 rounded-sm p-2.5 text-[11px] min-h-[36px]"
+          className="border border-foreground/60 rounded-sm p-2.5 text-[11px] min-h-[36px] whitespace-pre-line"
           data-testid="preview-description"
         >
           {description || (
@@ -218,16 +220,16 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
         </table>
       </div>
 
-      {/* Signature */}
+      {/* Signature — Authorised on left, Customer on right */}
       <div className="mt-8 grid grid-cols-2 gap-6">
         <div>
           <div className="border-t border-foreground pt-1 text-[9px] tracking-[0.2em] uppercase text-muted-foreground">
-            Customer Signature
+            Authorised Signature
           </div>
         </div>
         <div>
           <div className="border-t border-foreground pt-1 text-[9px] tracking-[0.2em] uppercase text-muted-foreground">
-            Authorised Signature
+            Customer Signature
           </div>
         </div>
       </div>
