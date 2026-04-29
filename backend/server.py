@@ -9,6 +9,8 @@ import asyncio
 import logging
 import requests
 import resend
+import gspread
+from google.oauth2.service_account import Credentials as SACredentials
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -29,6 +31,9 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 MANAGER_EMAIL = os.environ.get('MANAGER_EMAIL', '')
 SHOP_NAME = os.environ.get('SHOP_NAME', 'Jewelry Shop')
 GOOGLE_SHEET_CSV_URL = os.environ.get('GOOGLE_SHEET_CSV_URL', '')
+GOOGLE_SA_JSON_PATH = os.environ.get('GOOGLE_SA_JSON_PATH', '')
+STOCK_SHEET_NAME = os.environ.get('STOCK_SHEET_NAME', '')
+STOCK_WORKSHEET_NAME = os.environ.get('STOCK_WORKSHEET_NAME', 'Sheet1')
 
 # Configure logging
 logging.basicConfig(
@@ -177,7 +182,101 @@ def parse_price(val: str) -> float:
         return 0.0
 
 
+# ---------- Google Sheet write (highlight sold rows) ----------
+_gspread_client = None
+
+
+def _get_gspread_client():
+    global _gspread_client
+    if _gspread_client is not None:
+        return _gspread_client
+    if not GOOGLE_SA_JSON_PATH or not Path(GOOGLE_SA_JSON_PATH).exists():
+        return None
+    try:
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ]
+        creds = SACredentials.from_service_account_file(GOOGLE_SA_JSON_PATH, scopes=scopes)
+        _gspread_client = gspread.authorize(creds)
+        return _gspread_client
+    except Exception as e:
+        logger.exception(f"Failed to init gspread client: {e}")
+        return None
+
+
+def _highlight_sold_row_sync(stock_card: str) -> dict:
+    """Find the row whose Stock Card column matches stock_card and apply
+    a light-red fill + strikethrough across the row. Returns a status dict."""
+    gc = _get_gspread_client()
+    if gc is None:
+        return {"ok": False, "reason": "no_credentials"}
+    if not STOCK_SHEET_NAME:
+        return {"ok": False, "reason": "no_sheet_name"}
+    try:
+        sh = gc.open(STOCK_SHEET_NAME)
+        ws = sh.worksheet(STOCK_WORKSHEET_NAME) if STOCK_WORKSHEET_NAME else sh.sheet1
+
+        all_values = ws.get_all_values()
+        if not all_values:
+            return {"ok": False, "reason": "empty_sheet"}
+
+        headers = all_values[0]
+        col_map = map_columns(headers)
+        if 'stock_card' not in col_map:
+            return {"ok": False, "reason": "no_stock_card_column"}
+        sc_col_idx = col_map['stock_card']
+        target = normalize(stock_card)
+
+        # Find matching row (1-indexed; +1 because of header row in 0-indexed loop)
+        row_number = None
+        for i, row in enumerate(all_values[1:], start=2):
+            if sc_col_idx < len(row) and normalize(row[sc_col_idx]) == target:
+                row_number = i
+                break
+        if row_number is None:
+            return {"ok": False, "reason": "row_not_found"}
+
+        last_col = len(headers)
+        end_a1 = gspread.utils.rowcol_to_a1(row_number, last_col)
+        start_a1 = gspread.utils.rowcol_to_a1(row_number, 1)
+        rng = f"{start_a1}:{end_a1}"
+        ws.format(rng, {
+            "backgroundColor": {"red": 0.98, "green": 0.80, "blue": 0.80},
+            "textFormat": {"strikethrough": True},
+        })
+        return {"ok": True, "row": row_number, "range": rng}
+    except gspread.exceptions.SpreadsheetNotFound:
+        return {"ok": False, "reason": "sheet_not_shared_with_service_account"}
+    except Exception as e:
+        logger.exception(f"Sheet highlight failed: {e}")
+        return {"ok": False, "reason": str(e)}
+
+
+async def highlight_sold_row(stock_card: str) -> dict:
+    return await asyncio.to_thread(_highlight_sold_row_sync, stock_card)
+
+
 # ---------- Routes ----------
+@api_router.get("/sheet-highlight-test/{stock_card}")
+async def sheet_highlight_test(stock_card: str):
+    """Debug helper — manually trigger the sheet-highlight flow for a stock card."""
+    result = await highlight_sold_row(stock_card)
+    sa_email = ""
+    try:
+        import json as _json
+        if GOOGLE_SA_JSON_PATH and Path(GOOGLE_SA_JSON_PATH).exists():
+            sa_email = _json.loads(Path(GOOGLE_SA_JSON_PATH).read_text()).get("client_email", "")
+    except Exception:
+        pass
+    return {
+        "result": result,
+        "service_account_email": sa_email,
+        "sheet_name": STOCK_SHEET_NAME,
+        "worksheet_name": STOCK_WORKSHEET_NAME,
+    }
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Jewelry Invoice API", "shop": SHOP_NAME}
@@ -376,8 +475,14 @@ async def create_invoice(payload: InvoiceCreate):
     email_sent = await _send_invoice_email(invoice)
     invoice.email_sent = email_sent
 
+    # Highlight the sold row in the Google Sheet (best-effort, non-blocking failure)
+    sheet_result = await highlight_sold_row(invoice.stock_card)
+    if not sheet_result.get("ok"):
+        logger.warning(f"Sheet highlight skipped: {sheet_result.get('reason')}")
+
     # Save to MongoDB (exclude _id to avoid serialization issues)
     doc = invoice.model_dump()
+    doc["sheet_highlight"] = sheet_result
     await db.invoices.insert_one(doc)
     return invoice
 

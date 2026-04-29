@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "invoice-writer-494804",
+  "private_key_id": "4bd1b03c04af66e8aa30ff36759eb76754b67fe9",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDGHhCD53lU/p5P\n1vtXQq8NBJHEVOGySdHcJzR2nZiyh5EgwCy8QUjYyBsxeNkYakuXQ4ZBtfuCqz8M\nc5TpwtrH//OCmS+WrQDRItX6M2g5Y7pbYQDlWZVT/ebru5qF769tiLI5j9hwfz9J\nRcH0ULNmAJqB8Q4Gqypm8t24B/+9vU07k9+SKPUmhMRhmTZXGQSL5K7GaJPTdR/C\n+43OAqqNxyikQuxIsKnLqPFm59RIxk/2P7G/7CKT/hMGcrC0fCXpxgnkVLB2hGzx\n3+sGUOL59GXvazDgqx7dfiGIyZzj2uMYcZst6J3TQ9WWTexQL+B3zwAHjzk1FKh0\nlySvTOTHAgMBAAECggEABdxY0mRUF15Ockb3+bEG0FLT5GsCLf+iDGMIvVVUf8oy\nGUQ0UiNcDF/j8gw2ihn4qie1mvqWXYYKkdLIYZFBtCiWlUTYRdPe53uT8eaxTP/8\nFiea2sp8zVaq/tk9nu2yS6zxJ3H9+KH76pGY4b69MMIez/x5nAYddWQTFrLh4O9h\nUOTUh4OcfBN4NoLGhEwR89H8BiXJj1lFUCHL4qvON3y4Fqux+4FhKWmbWDfta+nD\n/E+Mx11sC6tcl+7aw8s2F3uR5/WWyoLioUyNJjkIgZT1x+UwVihRIRhiVWas1Gt5\nOZ28xgmGuzJOhZD1h/SvrVANOgM7ulG/pqqkP5pMvQKBgQD8eSmN66gInlpuEGmA\ng+Ta75Aqn3XSd3DDICS1ckvxqqPvfHF48CubcEOsFNC1vcznmUGGuvO3f97K7Ea4\nZ1LAv6j3S99WVS4VJkisxEwTdYl6UBISz/9WLp+daIv4MO7iTttd84yz2l0Irg4i\nX05tkgbSljSKZGspMmLCK9P5EwKBgQDI4obyQrW2i2JwwhoHcvP0knUBX2w3oegA\nhIcSkpy7ObWZwvTZE0AqMdxv/LdWnCjVMg8BuOwVdPXsiJsEKnsYYjYu7/9/Xlk1\nEJ6SO2v3f0tZqj0SNWksSVilU76sQ6uEKx9NcrA0Uj9cD8NBwRwvLiZFAwVIlw58\nlbqbGX3v/QKBgQCG+M86S+19DgsSJDwCtIA4ezH7V1xJtAjYh+qYBg6Ll8okUcbn\n/J2Tb6T97fLV9i4A8nGRcYixZO7aVQ5JrxMScGQIMMuo/8ivDdR0aEyzanagqQXA\ngOnkTPCP2kBZ4u8SlU25IGbsD6UE6ugrgAARm6uCEULtaVnQoFsjqwKbeQKBgDke\nyHZcZ6UHTy920cXqdtnFR0XjpzbOb9St2mZ6j9xg1XVqTQrogWc+FEs3lb4n2yh7\n+m5n8aFMR51BXqq5lZTiYDvKfGDwJ/eByUUVZmbSqE9Pq9vgmg5AsNcZz+7VsxB6\n3oS8JsRJ2sBHryKkUWpM+g7HhBoW8cSVIqF1hyzVAoGANifwg5DsAYr8WIhOVnpt\nq8jUc44+X0OPsuDhveZ1UPenszLKruBlt2iRMlbZE6MDOVAnm6z9qIXkhmEhNGyi\nsSr67CBpdRgUNaaijELhlzQvUl90xxD273g9J5K/tJ5jxFiR06xJxvt3l8D3Z5jv\nbeqwOnO5RkSrHzkgsd2ol7o=\n-----END PRIVATE KEY-----\n",
+  "client_email": "invoice-writer@invoice-writer-494804.iam.gserviceaccount.com",
+  "client_id": "113159656887458415548",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/invoice-writer%40invoice-writer-494804.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
