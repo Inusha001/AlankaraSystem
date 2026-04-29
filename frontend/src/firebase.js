@@ -1,5 +1,14 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  serverTimestamp,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAXQeOB0g6E7mtTQQRsdkrHPaA55kQPdBg",
@@ -14,10 +23,28 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 export async function saveCustomer(customer) {
-  // customer: { name, email, phone, sales_person, invoice_number, stock_card, total }
   const ref = await addDoc(collection(db, "customers"), {
     ...customer,
     created_at: serverTimestamp(),
   });
   return ref.id;
+}
+
+export async function saveInvoice(invoice) {
+  // Strip volatile/derived fields before save (server-side authoritative copy)
+  const ref = await addDoc(collection(db, "invoices"), {
+    ...invoice,
+    saved_at: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function fetchRecentInvoices(max = 50) {
+  const q = query(
+    collection(db, "invoices"),
+    orderBy("saved_at", "desc"),
+    limit(max)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ _docId: d.id, ...d.data() }));
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
-import { Search, Printer, Mail, Loader2, Sparkles } from "lucide-react";
+import { Search, Printer, Mail, Loader2, Sparkles, History } from "lucide-react";
 
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
@@ -10,7 +10,8 @@ import { Switch } from "./components/ui/switch";
 import { Textarea } from "./components/ui/textarea";
 import { Card } from "./components/ui/card";
 import { InvoicePreview } from "./components/InvoicePreview";
-import { saveCustomer } from "./firebase";
+import { PastInvoicesSheet } from "./components/PastInvoicesSheet";
+import { saveCustomer, saveInvoice } from "./firebase";
 import "./App.css";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -65,6 +66,7 @@ export default function App() {
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastEdited, setLastEdited] = useState("amount"); // "amount" or "percent"
+  const [pastOpen, setPastOpen] = useState(false);
   const now = useLiveDateTime();
   const dateTimeStr = formatDateTime(now);
 
@@ -188,7 +190,9 @@ export default function App() {
       const { data } = await axios.post(`${API}/invoices`, payload);
       set({ invoiceNumber: data.invoice_number });
 
-      // Save customer to Firebase (best-effort, non-blocking failure)
+      // Save customer + full invoice to Firebase (best-effort, surface errors)
+      let firebaseSaved = false;
+      let firebaseError = null;
       try {
         await saveCustomer({
           name: data.customer_name,
@@ -199,16 +203,25 @@ export default function App() {
           stock_card: data.stock_card,
           total: data.total,
         });
+        await saveInvoice(data);
+        firebaseSaved = true;
       } catch (fe) {
-        console.warn("Firebase save failed", fe);
+        firebaseError = fe?.message || String(fe);
+        console.warn("Firebase save failed:", fe);
       }
 
-      if (data.email_sent) {
-        toast.success(`Invoice ${data.invoice_number} saved & emailed to manager`);
-      } else {
-        toast.success(`Invoice ${data.invoice_number} saved`, {
-          description: "Email could not be sent — check Resend config",
+      const parts = [];
+      if (data.email_sent) parts.push("emailed to manager");
+      if (firebaseSaved) parts.push("synced to Firebase");
+      const description = parts.length ? parts.join(" · ") : undefined;
+
+      if (firebaseError) {
+        toast.warning(`Invoice ${data.invoice_number} saved locally`, {
+          description: `Firebase blocked the save: ${firebaseError}. Update Firestore rules to allow writes.`,
+          duration: 8000,
         });
+      } else {
+        toast.success(`Invoice ${data.invoice_number} saved`, { description });
       }
       // Trigger print after a small delay so the preview updates
       setTimeout(() => window.print(), 400);
@@ -238,6 +251,34 @@ export default function App() {
       .catch(() => {});
   };
 
+  const loadPastInvoice = (inv) => {
+    setForm({
+      customerName: inv.customer_name || "",
+      customerEmail: inv.customer_email || "",
+      customerPhone: inv.customer_phone || "",
+      salesPerson: inv.sales_person || "",
+      stockCard: inv.stock_card || "",
+      description: inv.description || "",
+      item: inv.item || "",
+      metal: inv.metal || "",
+      metalType: inv.metal_type || "",
+      diamondType: inv.diamond_type || "",
+      diamondClarity: inv.diamond_clarity || "",
+      diamondCts: inv.diamond_cts || "",
+      csType: inv.cs_type || "",
+      csCts: inv.cs_cts || "",
+      stockPrice: Number(inv.stock_price) || 0,
+      discountAmount: Number(inv.discount_amount) || 0,
+      discountPercent: Number(inv.discount_percent) || 0,
+      vatInvoice: !!inv.vat_invoice,
+      invoiceNumber: inv.invoice_number || "INV-—",
+    });
+    setLastEdited("amount");
+    toast.success(`Loaded ${inv.invoice_number}`, {
+      description: "Editing this will create a NEW invoice number on save.",
+    });
+  };
+
   const previewInvoice = {
     ...form,
     invoiceNumber: form.invoiceNumber || "INV-—",
@@ -263,16 +304,34 @@ export default function App() {
               </div>
             </div>
           </div>
-          <div className="text-right text-sm">
-            <div className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
-              Live
+          <div className="flex items-center gap-3">
+            <div className="text-right text-sm">
+              <div className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
+                Live
+              </div>
+              <div className="font-mono text-[13px]" data-testid="header-datetime">
+                {dateTimeStr}
+              </div>
             </div>
-            <div className="font-mono text-[13px]" data-testid="header-datetime">
-              {dateTimeStr}
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPastOpen(true)}
+              data-testid="btn-past-invoices"
+              className="ml-2"
+            >
+              <History className="w-4 h-4 mr-2" />
+              Past Invoices
+            </Button>
           </div>
         </div>
       </header>
+
+      <PastInvoicesSheet
+        open={pastOpen}
+        onOpenChange={setPastOpen}
+        onSelect={loadPastInvoice}
+      />
 
       {/* Main two-column layout */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 print-root">
