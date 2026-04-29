@@ -144,8 +144,36 @@ export default function App() {
       });
       toast.success("Stock data loaded");
     } catch (e) {
-      const msg = e?.response?.data?.detail || "Failed to fetch stock";
-      toast.error(msg);
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail;
+
+      if (status === 409 && detail && typeof detail === "object") {
+        // Already sold — clear any stale stock data and show a clear warning
+        set({
+          item: "",
+          metal: "",
+          metalType: "",
+          diamondType: "",
+          diamondClarity: "",
+          diamondCts: "",
+          csType: "",
+          csCts: "",
+          stockPrice: 0,
+        });
+        const soldOn = detail.sold_at ? ` on ${detail.sold_at}` : "";
+        const buyer = detail.customer_name ? ` to ${detail.customer_name}` : "";
+        const inv = detail.invoice_number ? ` (${detail.invoice_number})` : "";
+        toast.error("Item is already sold", {
+          description: `Sold${buyer}${soldOn}${inv}.`,
+          duration: 8000,
+        });
+      } else {
+        const msg =
+          (typeof detail === "string" && detail) ||
+          detail?.message ||
+          "Failed to fetch stock";
+        toast.error(msg);
+      }
     } finally {
       setFetching(false);
     }

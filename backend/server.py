@@ -183,27 +183,52 @@ async def root():
     return {"message": "Jewelry Invoice API", "shop": SHOP_NAME}
 
 
-@api_router.get("/stock/{stock_card}", response_model=StockItem)
+@api_router.get("/stock/{stock_card}")
 async def get_stock(stock_card: str):
     rows = fetch_sheet_rows()
     if not rows:
         raise HTTPException(status_code=503, detail="Stock data unavailable. Check the Google Sheet has data and is published.")
     target = normalize(stock_card)
+    matched = None
     for row in rows:
         if normalize(row.get('stock_card', '')) == target:
-            return StockItem(
-                stock_card=row.get('stock_card', stock_card),
-                item=row.get('item', ''),
-                metal=row.get('metal', ''),
-                metal_type=row.get('metal_type', ''),
-                diamond_type=row.get('diamond_type', ''),
-                diamond_clarity=row.get('diamond_clarity', ''),
-                diamond_cts=row.get('diamond_cts', ''),
-                cs_type=row.get('cs_type', ''),
-                cs_cts=row.get('cs_cts', ''),
-                stock_price=parse_price(row.get('stock_price', '0')),
-            )
-    raise HTTPException(status_code=404, detail=f"Stock card '{stock_card}' not found")
+            matched = row
+            break
+    if not matched:
+        raise HTTPException(status_code=404, detail=f"Stock card '{stock_card}' not found")
+
+    item = StockItem(
+        stock_card=matched.get('stock_card', stock_card),
+        item=matched.get('item', ''),
+        metal=matched.get('metal', ''),
+        metal_type=matched.get('metal_type', ''),
+        diamond_type=matched.get('diamond_type', ''),
+        diamond_clarity=matched.get('diamond_clarity', ''),
+        diamond_cts=matched.get('diamond_cts', ''),
+        cs_type=matched.get('cs_type', ''),
+        cs_cts=matched.get('cs_cts', ''),
+        stock_price=parse_price(matched.get('stock_price', '0')),
+    )
+
+    # Check if this stock card has already been sold
+    sold = await db.invoices.find_one(
+        {"stock_card": item.stock_card},
+        {"_id": 0, "invoice_number": 1, "customer_name": 1, "created_at": 1},
+    )
+    if sold:
+        # 409 Conflict — frontend will show "Item is already sold"
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Item is already sold",
+                "invoice_number": sold.get("invoice_number"),
+                "customer_name": sold.get("customer_name"),
+                "sold_at": sold.get("created_at"),
+                "item": item.model_dump(),
+            },
+        )
+
+    return item
 
 
 @api_router.get("/stock")
