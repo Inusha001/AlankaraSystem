@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
+import logo from "./assets/logo.png";
 import { Search, Printer, Mail, Loader2, Sparkles, History } from "lucide-react";
 
 import { Button } from "./components/ui/button";
@@ -16,7 +17,7 @@ import "./App.css";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const SHOP_NAME = "AJPL Jewelry";
+const SHOP_NAME = "Alankara Jewelry";
 
 function useLiveDateTime() {
   const [now, setNow] = useState(new Date());
@@ -322,8 +323,8 @@ export default function App() {
       <header className="no-print border-b border-border bg-white/70 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-sm bg-foreground text-background flex items-center justify-center">
-              <Sparkles className="w-4 h-4" strokeWidth={1.5} />
+            <div className="w-15 h-12 flex items-center justify-center">
+              <img src={logo} alt="logo" className="w-15 h-12 object-contain" />
             </div>
             <div>
               <div className="font-heading font-semibold text-xl tracking-tight leading-none">
@@ -365,23 +366,23 @@ export default function App() {
 
       {/* Main two-column layout */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 print-root">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
           {/* Form */}
           <section className="no-print lg:col-span-5 space-y-6">
             <div>
-              <h2 className="font-heading text-3xl tracking-tight">New Invoice</h2>
+              <h2 className="font-heading text-3xl tracking-tight text-yellow-400">New Invoice</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Look up stock, capture customer details, print & email.
               </p>
             </div>
 
-            <Card className="p-6 space-y-4">
+            <Card className="p-6 space-y-4 bg-white/5 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl">
               <div>
                 <Label htmlFor="stockCard" className="text-xs uppercase tracking-widest">
                   Stock Card Number
                 </Label>
                 <div className="flex gap-2 mt-2">
-                  <Input
+                  <Input 
                     id="stockCard"
                     data-testid="input-stock-card"
                     value={form.stockCard}
@@ -424,7 +425,7 @@ export default function App() {
               )}
             </Card>
 
-            <Card className="p-6 space-y-4">
+            <Card className="p-6 space-y-4 bg-white/5 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl">
               <div className="text-xs uppercase tracking-widest text-muted-foreground">
                 Customer
               </div>
@@ -496,7 +497,7 @@ export default function App() {
               </div>
             </Card>
 
-            <Card className="p-6 space-y-4">
+            <Card className="p-6 space-y-4 bg-white/5 backdrop-blur-md border border-white/10 shadow-xl rounded-2xl">
               <div className="text-xs uppercase tracking-widest text-muted-foreground">
                 Pricing
               </div>
@@ -609,6 +610,14 @@ export default function App() {
           </section>
         </div>
       </main>
+      <footer className="no-print border-t border-border mt-10 py-4 text-center text-sm text-muted-foreground">
+        <div>
+          Developed by <span className="font-medium text-foreground">Inusha Ranasinghe</span>
+        </div>
+        <div className="mt-1">
+          Contact: <span className="font-mono">+94 77 053 2175</span>
+        </div>
+      </footer>
     </div>
   );
 }
