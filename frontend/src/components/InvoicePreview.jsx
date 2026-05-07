@@ -1,5 +1,7 @@
 import React from "react";
 
+const VAT_NUMBER = "114351210 - 7000";
+
 export const InvoicePreview = React.forwardRef(function InvoicePreview(
   { invoice, dateTime, totals },
   ref
@@ -42,9 +44,9 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
   }
   const detailColRight = [
     ["Diamond Clarity", diamondClarity],
-    ["Diamond CTS", diamondCts],
+    ["Diamond Cts", diamondCts],
     ["C/S Type", csType],
-    ["C/S CTS", csCts],
+    ["C/S Cts", csCts],
   ];
 
   const renderColumn = (rows) => (
@@ -66,13 +68,10 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
     <div
       ref={ref}
       data-testid="invoice-preview"
-      className="print-area bg-white border border-border shadow-[0_8px_30px_rgb(0,0,0,0.08)] mx-auto"
+      className="print-area bg-white border border-border shadow-[0_8px_30px_rgb(0,0,0,0.08)] mx-auto flex flex-col"
       style={{
-        // A5 at 96 DPI: 148mm x 210mm ≈ 559 x 794px. Display at compact size.
         maxWidth: "460px",
         minHeight: "653px",
-        aspectRatio: "1 / 1.414",
-        // Leave the pre-printed logo area (top ~12%) and footer band (~8%) blank
         paddingTop: "90px",
         paddingLeft: "28px",
         paddingRight: "28px",
@@ -148,16 +147,27 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
             Sales Person
           </div>
           <div className="leading-tight">{salesPerson || "—"}</div>
+
           <div className="mt-2 text-[9px] tracking-[0.25em] text-muted-foreground uppercase">
             Stock Card
           </div>
           <div className="font-mono text-[12px]" data-testid="preview-stock-card">
             {stockCard || "—"}
           </div>
+
+          {vatInvoice && (
+            <div className="mt-2">
+              <div className="text-[9px] tracking-[0.25em] text-muted-foreground uppercase">
+                VAT No
+              </div>
+              <div className="font-mono text-[11px]">
+                {VAT_NUMBER}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Description (boxed, above item details) */}
       <div className="mt-3">
         <div className="text-[9px] tracking-[0.25em] text-muted-foreground uppercase mb-1">
           Description
@@ -184,7 +194,7 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
       </div>
 
       {/* Totals */}
-      <div className="mt-4 ml-auto" style={{ maxWidth: "260px" }}>
+      <div className="mt-8 ml-auto" style={{ maxWidth: "260px" }}>
         <table className="w-full text-[11px]">
           <tbody>
             <tr>
@@ -207,7 +217,7 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
                 <td className="py-0.5 text-right">{fmt(totals.vat)}</td>
               </tr>
             )}
-            <tr className="border-t-2 border-foreground">
+            <tr className="border-t-2 border-black">
               <td className="py-1.5 font-bold text-[13px]">Total</td>
               <td
                 className="py-1.5 text-right font-bold text-[13px]"
@@ -221,7 +231,7 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
       </div>
 
       {/* Signature — Authorised on left, Customer on right */}
-      <div className="mt-8 grid grid-cols-2 gap-6">
+      <div className="mt-16 grid grid-cols-2 gap-6">
         <div>
           <div className="border-t border-foreground pt-1 text-[9px] tracking-[0.2em] uppercase text-muted-foreground">
             Authorised Signature
