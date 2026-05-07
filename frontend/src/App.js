@@ -370,7 +370,7 @@ export default function App() {
           {/* Form */}
           <section className="no-print lg:col-span-5 space-y-6">
             <div>
-              <h2 className="font-heading text-3xl tracking-tight text-yellow-400">New Invoice</h2>
+              <h2 className="font-heading text-3xl tracking-tight text-black-400">New Invoice</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Look up stock, capture customer details, print & email.
               </p>
