@@ -253,8 +253,10 @@ export default function App() {
       } else {
         toast.success(`Invoice ${data.invoice_number} saved`, { description });
       }
-      // Trigger print after a small delay so the preview updates
-      setTimeout(() => window.print(), 400);
+      setTimeout(() => {
+        toast.dismiss();
+        window.print();
+      }, 300);
     } catch (e) {
       console.error(e);
       toast.error("Failed to save invoice", {
