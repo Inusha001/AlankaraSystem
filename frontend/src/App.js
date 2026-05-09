@@ -17,7 +17,7 @@ import "./App.css";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const SHOP_NAME = "Alankara Jewelry";
+const SHOP_NAME = "Alankara Jewellry";
 
 function useLiveDateTime() {
   const [now, setNow] = useState(new Date());
@@ -58,6 +58,8 @@ const initialForm = {
   stockPrice: 0,
   discountAmount: 0,
   discountPercent: 0,
+  finalPrice: 0,
+  paymentMethod: "Cash",
   vatInvoice: false,
   invoiceNumber: "INV-—",
 };
@@ -119,7 +121,26 @@ export default function App() {
   const onAmountChange = (v) => {
     const amt = Math.max(Number(v) || 0, 0);
     setLastEdited("amount");
-    set({ discountAmount: amt });
+    const price = Number(form.stockPrice) || 0;
+
+    set({
+      discountAmount: amt,
+      finalPrice: Math.max(price - amt, 0),
+    });
+  };
+
+  const onFinalPriceChange = (v) => {
+    const final = Math.max(Number(v) || 0, 0);
+    const price = Number(form.stockPrice) || 0;
+
+    const discount = Math.max(price - final, 0);
+    const pct = price > 0 ? (discount / price) * 100 : 0;
+
+    set({
+      finalPrice: final,
+      discountAmount: +discount.toFixed(2),
+      discountPercent: +pct.toFixed(2),
+    });
   };
 
   const fetchStock = async () => {
@@ -142,6 +163,7 @@ export default function App() {
         csType: data.cs_type || "",
         csCts: data.cs_cts || "",
         stockPrice: Number(data.stock_price) || 0,
+        finalPrice: Number(data.stock_price) || 0,
       });
       toast.success("Stock data loaded");
     } catch (e) {
@@ -517,6 +539,7 @@ export default function App() {
                     className="mt-2 font-mono"
                   />
                 </div>
+
                 <div>
                   <Label htmlFor="discPct">Discount %</Label>
                   <Input
@@ -530,6 +553,37 @@ export default function App() {
                     onChange={(e) => onPercentChange(e.target.value)}
                     className="mt-2 font-mono"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <Label htmlFor="finalPrice">Discounted Price</Label>
+                  <Input
+                    id="finalPrice"
+                    data-testid="input-final-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.finalPrice}
+                    onChange={(e) => onFinalPriceChange(e.target.value)}
+                    className="mt-2 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="paymentMethod">Payment Method</Label>
+                  <select
+                    id="paymentMethod"
+                    value={form.paymentMethod}
+                    onChange={(e) => set({ paymentMethod: e.target.value })}
+                    className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option>Cash</option>
+                    <option>Card</option>
+                    <option>Bank Transfer</option>
+                    <option>Cheque</option>
+                  </select>
                 </div>
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-border">
