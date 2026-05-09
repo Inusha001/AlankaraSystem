@@ -6,4 +6,21 @@
   [data-sonner-toaster] {
     display: none !important;
   }
+  
+  .text-muted-foreground {
+    color: black !important;
+  }
+
+  .border-border {
+    border-color: black !important;
+  }
+
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
