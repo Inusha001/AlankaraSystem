@@ -25,6 +25,7 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
     stockPrice,
     discountAmount,
     discountPercent,
+    paymentMethod,
     vatInvoice,
   } = invoice;
 
@@ -190,6 +191,11 @@ export const InvoicePreview = React.forwardRef(function InvoicePreview(
         <div className="grid grid-cols-2 gap-2.5" data-testid="preview-item-details">
           {renderColumn(detailColLeft)}
           {renderColumn(detailColRight)}
+        </div>
+        <div className="grid grid-cols-2 gap-2.5" data-testid="preview-item-details"></div>
+        <div className="mt-3 text-[11px]">
+          <span className="text-muted-foreground">Payment Method:</span>{" "}
+          <span className="font-medium">{paymentMethod || "—"}</span>
         </div>
       </div>
 
